@@ -39,7 +39,7 @@ def get_feishu_app_token():
 
 
 def upload_image_to_feishu_drive(image_path, app_token):
-    url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
+    url = "https://open.feishu.cn/open-apis/drive/v1/medias/upload_all"
     filename = os.path.basename(image_path)
     file_size = os.path.getsize(image_path)
     with open(image_path, "rb") as f:
