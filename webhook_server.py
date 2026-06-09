@@ -25,7 +25,7 @@ HOTAI_API_KEY = os.environ.get("HOTAI_API_KEY")
 if not HOTAI_API_KEY:
     raise RuntimeError("环境变量 HOTAI_API_KEY 未设置，请先在 Render Environment 配")
 HOTAI_API_URL = "https://www.hotaitool.net/v1/images/generations"
-HOTAI_MODEL = "gpt-image-2-codex"
+HOTAI_MODEL = "gpt-image-2"
 
 # ==================== 飞书 API 工具 ====================
 
