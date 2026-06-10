@@ -48,38 +48,35 @@ def get_feishu_app_token():
 
 
 def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, record_id: str) -> dict:
-    """终极修复版：上传图片并关联多维表格"""
+    """终极绕路方案：使用多维表格专用媒介上传接口"""
     import os
     filename = os.path.basename(image_path)
-    file_size = os.path.getsize(image_path)
     
-    # 彻底清理 Token，防止环境变量里有不可见空格
     base_token = str(FEISHU_BASE_TOKEN).strip()
     table_id = str(FEISHU_TABLE_ID).strip()
     field_id = str(FEISHU_FIELD_ID_IMAGE).strip()
 
     headers = {"Authorization": f"Bearer {tenant_token}"}
     
-    # --- 第一步：上传附件到该多维表格 ---
-    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{base_token}/attachments"
+    # --- 换成这个带 table_id 的专用接口 ---
+    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{base_token}/tables/{table_id}/attachments"
     
-    print(f"DEBUG: 尝试上传到 {upload_url}")
+    print(f"DEBUG: 尝试向专用接口上传: {upload_url}")
     
     with open(image_path, "rb") as f:
-        # 飞书对 files 的格式要求非常严格
         files = {
-            'file': (filename, f, 'image/png'),
-            'name': (None, filename)
+            'file': (filename, f, 'application/octet-stream')
         }
+        # 注意：这里只传 files，不传 data
         upload_resp = requests.post(upload_url, headers=headers, files=files)
         
         if upload_resp.status_code != 200:
-            print(f"❌ 上传失败详情: {upload_resp.text}")
+            print(f"❌ 专用接口上传失败: {upload_resp.text}")
             upload_resp.raise_for_status()
         
     file_token = upload_resp.json().get("data", {}).get("file_token")
     if not file_token:
-        raise Exception(f"上传成功但未获取到 token: {upload_resp.text}")
+        raise Exception(f"未获取到 file_token: {upload_resp.text}")
         
     print(f"✅ 第一步成功：Token = {file_token}")
 
@@ -93,7 +90,7 @@ def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, recor
     
     update_resp = requests.patch(update_url, headers=headers, json=update_data)
     update_resp.raise_for_status()
-    print(f"✅ 第二步成功：图片已写入记录！")
+    print(f"✅ 第二步成功：图片已写入记录 {record_id}！")
     
     return update_resp.json()
 def upload_attachment_to_base_record(
