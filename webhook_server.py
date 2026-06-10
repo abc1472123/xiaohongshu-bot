@@ -48,37 +48,46 @@ def get_feishu_app_token():
 
 
 def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, record_id: str) -> dict:
-    """终极绕路方案：使用多维表格专用媒介上传接口"""
+    """终极修复：使用飞书云空间通用媒体上传接口"""
     import os
     filename = os.path.basename(image_path)
+    file_size = os.path.getsize(image_path)
     
-    base_token = str(FEISHU_BASE_TOKEN).strip()
-    table_id = str(FEISHU_TABLE_ID).strip()
+    # 彻底去除所有可能的不可见字符（空格、换行、制表符）
+    def clean_id(s): return "".join(filter(str.isalnum, str(s)))
+    
+    base_token = clean_id(FEISHU_BASE_TOKEN)
+    table_id = clean_id(FEISHU_TABLE_ID)
     field_id = str(FEISHU_FIELD_ID_IMAGE).strip()
 
     headers = {"Authorization": f"Bearer {tenant_token}"}
     
-    # --- 换成这个带 table_id 的专用接口 ---
-    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{base_token}/tables/{table_id}/attachments"
+    # --- 方案：使用云空间通用上传 (更强悍的兼容性) ---
+    upload_url = "https://open.feishu.cn/open-apis/drive/v1/medias/upload_all"
     
-    print(f"DEBUG: 尝试向专用接口上传: {upload_url}")
+    print(f"DEBUG: 正在使用通用接口上传，BaseToken: [{base_token}]")
     
     with open(image_path, "rb") as f:
-        files = {
-            'file': (filename, f, 'application/octet-stream')
+        params = {
+            "file_name": filename,
+            "parent_type": "bitable_app",
+            "parent_node": base_token,
+            "size": file_size
         }
-        # 注意：这里只传 files，不传 data
-        upload_resp = requests.post(upload_url, headers=headers, files=files)
+        files = {"file": (filename, f, "image/png")}
+        
+        # 注意：这里是用 data=params 而不是 URL 参数
+        upload_resp = requests.post(upload_url, headers=headers, data=params, files=files)
         
         if upload_resp.status_code != 200:
-            print(f"❌ 专用接口上传失败: {upload_resp.text}")
+            print(f"❌ 通用接口也崩了: {upload_resp.text}")
             upload_resp.raise_for_status()
         
     file_token = upload_resp.json().get("data", {}).get("file_token")
     if not file_token:
-        raise Exception(f"未获取到 file_token: {upload_resp.text}")
+        raise Exception(f"未能获取 file_token: {upload_resp.text}")
         
-    print(f"✅ 第一步成功：Token = {file_token}")
+    print(f"✅ 第一步万能上传成功：Token = {file_token}")
 
     # --- 第二步：回填到记录 ---
     update_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{base_token}/tables/{table_id}/records/{record_id}"
@@ -90,7 +99,7 @@ def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, recor
     
     update_resp = requests.patch(update_url, headers=headers, json=update_data)
     update_resp.raise_for_status()
-    print(f"✅ 第二步成功：图片已写入记录 {record_id}！")
+    print(f"✅ 第二步回填成功！")
     
     return update_resp.json()
 def upload_attachment_to_base_record(
