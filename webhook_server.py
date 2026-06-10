@@ -53,7 +53,7 @@ def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, recor
     headers = {"Authorization": f"Bearer {tenant_token}"}
     
     # --- 第一步：上传图片到素材库 ---
-    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_BASE_TOKEN}/tables/{FEISHU_TABLE_ID}/attachments"
+    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_BASE_TOKEN}/attachments"
     
     with open(image_path, "rb") as f:
         files = {"file": (filename, f, "image/png")}
