@@ -99,7 +99,7 @@ def generate_image_via_hotai(prompt: str) -> bytes:
         "size": "1024x1024",
     }
 
-    resp = requests.post(HOTAI_API_URL, headers=headers, json=payload, timeout=60)
+    resp = requests.post(HOTAI_API_URL, headers=headers, json=payload, timeout=180)
     resp.raise_for_status()
     result = resp.json()
 
