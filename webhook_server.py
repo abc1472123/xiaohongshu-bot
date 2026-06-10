@@ -48,41 +48,35 @@ def get_feishu_app_token():
 
 
 def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, record_id: str) -> dict:
-    """上传图片到多维表格【生图】附件字段"""
-    url = (
-        f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_BASE_TOKEN}"
-        f"/tables/{FEISHU_TABLE_ID}"
-        f"/records/{record_id}"
-        f"/attachments"
-    )
+    """上传图片并写入多维表格"""
     filename = os.path.basename(image_path)
-
-    headers = {
-        "Authorization": f"Bearer {tenant_token}"
-    }
-
+    headers = {"Authorization": f"Bearer {tenant_token}"}
+    
+    # --- 第一步：上传图片到素材库 ---
+    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_BASE_TOKEN}/tables/{FEISHU_TABLE_ID}/attachments"
+    
     with open(image_path, "rb") as f:
-        files = {
-            "file": (filename, f, "image/png")
+        files = {"file": (filename, f, "image/png")}
+        upload_resp = requests.post(upload_url, headers=headers, files=files)
+        upload_resp.raise_for_status()
+        
+    file_token = upload_resp.json().get("data", {}).get("file_token")
+    if not file_token:
+        raise Exception(f"上传图片失败: {upload_resp.text}")
+    print(f"✅ 第一步成功：图片已上传，拿到 token: {file_token}")
+
+    # --- 第二步：把图片 token 填入表格记录 ---
+    update_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_BASE_TOKEN}/tables/{FEISHU_TABLE_ID}/records/{record_id}"
+    update_data = {
+        "fields": {
+            FEISHU_FIELD_ID_IMAGE: [{"file_token": file_token}]
         }
-        data = {
-            "file_name": filename
-        }
-
-        resp = requests.post(url, headers=headers, data=data, files=files, timeout=30)
-
-    print("上传到多维表格附件字段状态:", resp.status_code)
-    print("上传到多维表格附件字段响应:", resp.text)
-
-    resp.raise_for_status()
-    result = resp.json()
-
-    if result.get("code") != 0:
-        raise Exception(f"上传到多维表格附件字段失败：{result}")
-
-    return result
-
-
+    }
+    update_resp = requests.patch(update_url, headers=headers, json=update_data)
+    update_resp.raise_for_status()
+    print(f"✅ 第二步成功：图片已关联到记录 {record_id}")
+    
+    return update_resp.json()
 def upload_attachment_to_base_record(
     record_id: str, field_id: str, file_token: str, app_token: str
 ) -> dict:
