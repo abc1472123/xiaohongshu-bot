@@ -180,13 +180,13 @@ def process_image_background(record_id: str, prompt: str):
         print(f"[后台-{tid}] [Step 3] 获取飞书 App Token...")
         app_token = get_feishu_app_token()
 
-# Step 4: 上传图片到多维表格【生图】附件字段
-if record_id:
-    print(f"[后台-{tid}] [Step 4] 上传图片到多维表格【生图】字段 record_id={record_id}...")
-    upload_result = upload_image_to_bitable_attachment(tmp_path, app_token, record_id)
-    print(f"[后台-{tid}] [Step 4] 上传到【生图】字段成功 result={upload_result}")
-else:
-    print(f"[后台-{tid}] [Step 4] 缺少 record_id，无法上传到【生图】字段")
+        # Step 4: 上传图片到多维表格【生图】附件字段
+        if record_id:
+            print(f"[后台-{tid}] [Step 4] 上传图片到多维表格【生图】字段 record_id={record_id}...")
+            upload_result = upload_image_to_bitable_attachment(tmp_path, app_token, record_id)
+            print(f"[后台-{tid}] [Step 4] 上传到【生图】字段成功 result={upload_result}")
+        else:
+            print(f"[后台-{tid}] [Step 4] 缺少 record_id，无法上传到【生图】字段")
        
         # 清理临时文件
         try:
