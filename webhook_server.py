@@ -47,26 +47,42 @@ def get_feishu_app_token():
     return token
 
 
-def upload_image_to_feishu_drive(image_path: str, app_token: str) -> str:
-    """上传图片到飞书云空间，返回 file_token"""
-    url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
+def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, record_id: str) -> dict:
+    """上传图片到多维表格【生图】附件字段"""
+    url = (
+        f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_BASE_TOKEN}"
+        f"/tables/{FEISHU_TABLE_ID}"
+        f"/records/{record_id}"
+       f"/fields/{FEISHU_FIELD_ID_IMAGE}"
+        f"/attachment/upload"
+    )
+
     filename = os.path.basename(image_path)
-    file_size = os.path.getsize(image_path)
+
+    headers = {
+        "Authorization": f"Bearer {tenant_token}"
+    }
+
     with open(image_path, "rb") as f:
-        files = {"file": (filename, f, "image/png")}
-        data = {
-            "file_name": filename,
-            "parent_type": "bitable_file",
-            "parent_node": FEISHU_BASE_TOKEN,
-            "size": str(file_size),
+        files = {
+            "file": (filename, f, "image/png")
         }
-        headers = {"Authorization": f"Bearer {app_token}"}
+        data = {
+            "file_name": filename
+        }
+
         resp = requests.post(url, headers=headers, data=data, files=files, timeout=30)
+
+    print("上传到多维表格附件字段状态:", resp.status_code)
+    print("上传到多维表格附件字段响应:", resp.text)
+
     resp.raise_for_status()
     result = resp.json()
+
     if result.get("code") != 0:
-        raise Exception(f"上传飞书失败: {result}")
-    return result["data"]["file_token"]
+        raise Exception(f"上传到多维表格附件字段失败：{result}")
+
+    return result
 
 
 def upload_attachment_to_base_record(
@@ -164,21 +180,14 @@ def process_image_background(record_id: str, prompt: str):
         print(f"[后台-{tid}] [Step 3] 获取飞书 App Token...")
         app_token = get_feishu_app_token()
 
-        # Step 4: 上传飞书云空间
-        print(f"[后台-{tid}] [Step 4] 上传图片到飞书云空间...")
-        file_token = upload_image_to_feishu_drive(tmp_path, app_token)
-        print(f"[后台-{tid}] [Step 4] 上传成功，file_token={file_token}")
-
-        # Step 5: 回写 Base 记录
-        if record_id:
-            print(f"[后台-{tid}] [Step 5] 回填 Base 记录 record_id={record_id}...")
-            result = upload_attachment_to_base_record(
-                record_id, FEISHU_FIELD_ID_IMAGE, file_token, app_token
-            )
-            print(f"[后台-{tid}] [Step 5] 回填成功！result={result}")
-        else:
-            print(f"[后台-{tid}] [Step 5] 未找到 record_id，跳过回填")
-
+# Step 4: 上传图片到多维表格【生图】附件字段
+if record_id:
+    print(f"[后台-{tid}] [Step 4] 上传图片到多维表格【生图】字段 record_id={record_id}...")
+    upload_result = upload_image_to_bitable_attachment(tmp_path, app_token, record_id)
+    print(f"[后台-{tid}] [Step 4] 上传到【生图】字段成功 result={upload_result}")
+else:
+    print(f"[后台-{tid}] [Step 4] 缺少 record_id，无法上传到【生图】字段")
+       
         # 清理临时文件
         try:
             os.remove(tmp_path)
