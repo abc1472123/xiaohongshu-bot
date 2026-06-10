@@ -103,7 +103,7 @@ def generate_image_via_hotai(prompt: str) -> bytes:
         "n": 1,
         "size": "1024x1024",
     }
-    resp = requests.post(HOTAI_API_URL, headers=headers, json=payload, timeout=60)
+    resp = requests.post(HOTAI_API_URL, headers=headers, json=payload, timeout=180)
     resp.raise_for_status()
     result = resp.json()
     task_id = result.get("id")
@@ -281,4 +281,4 @@ def health():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, threaded=True)
+    app.run(host="0.0.0.0", port=port, threaded=True, threaded=True)
