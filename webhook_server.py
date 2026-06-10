@@ -54,7 +54,7 @@ def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, recor
         f"/tables/{FEISHU_TABLE_ID}"
         f"/records/{record_id}"
        f"/fields/{FEISHU_FIELD_ID_IMAGE}"
-        f"/attachment/upload"
+        f"/attachments"
     )
 
     filename = os.path.basename(image_path)
