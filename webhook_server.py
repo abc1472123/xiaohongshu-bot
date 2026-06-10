@@ -48,56 +48,53 @@ def get_feishu_app_token():
 
 
 def upload_image_to_bitable_attachment(image_path: str, tenant_token: str, record_id: str) -> dict:
-    """万能修复版：使用飞书底层驱动接口，杜绝 404"""
-    import os, json
-    filename = os.path.basename(image_path)
-    file_size = os.path.getsize(image_path)
+    """官方标准版：使用最简化的多维表格附件上传口径"""
+    import os
     
-    # 极致过滤 ID
-    def clean(s): return "".join(filter(str.isalnum, str(s)))
-    b_token = clean(FEISHU_BASE_TOKEN)
-    t_id = clean(FEISHU_TABLE_ID)
-    f_id = str(FEISHU_FIELD_ID_IMAGE).strip()
+    # 1. 整理 ID，确保没有任何空格
+    base_token = str(FEISHU_BASE_TOKEN).strip()
+    table_id = str(FEISHU_TABLE_ID).strip()
+    field_id = str(FEISHU_FIELD_ID_IMAGE).strip()
 
     headers = {"Authorization": f"Bearer {tenant_token}"}
-
-    # --- 第一步：通用上传（不再使用 bitable 路径，防止 404） ---
-    # 这个接口是飞书最核心的上传接口
-    upload_url = "https://open.feishu.cn/open-apis/drive/v1/medias/upload_all"
     
-    # 飞书极度挑剔的参数格式
-    form_data = {
-        'file_name': filename,
-        'parent_type': 'bitable_app',
-        'parent_node': b_token,
-        'size': str(file_size)
-    }
+    # 2. 这里的 URL 必须是这个，不能多也不能少
+    upload_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{base_token}/attachments"
     
-    print(f"DEBUG: 正在尝试万能上传 -> Base: {b_token}")
+    print(f"DEBUG: 正在向 {base_token} 上传文件: {os.path.basename(image_path)}")
     
+    # 3. 严格按照飞书要求的 multipart/form-data 格式
     with open(image_path, "rb") as f:
-        files = {'file': (filename, f, 'image/png')}
-        # 注意：这里必须同时带上 data 和 files
-        resp = requests.post(upload_url, headers=headers, data=form_data, files=files)
+        files = {
+            'file': (os.path.basename(image_path), f)
+        }
+        # 注意：这里只传 files，不要传任何 data 参数，飞书这个接口很挑剔
+        resp = requests.post(upload_url, headers=headers, files=files)
         
+        # 这一步极其重要：如果失败，它会把飞书返回的【中文提示】印出来！
         if resp.status_code != 200:
-            print(f"❌ 上传阶段失败! 状态码: {resp.status_code}, 原因: {resp.text}")
+            print(f"❌ 飞书报错了！具体原因如下：")
+            print(resp.text) # 这里会印出类似 {"code":123, "msg":"..."} 的内容
             resp.raise_for_status()
             
     file_token = resp.json().get("data", {}).get("file_token")
-    print(f"✅ 上传成功! Token: {file_token}")
+    print(f"✅ 第一步上传成功，file_token: {file_token}")
 
-    # --- 第二步：回填到记录 ---
-    update_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{b_token}/tables/{t_id}/records/{record_id}"
-    update_data = {"fields": {f_id: [{"file_token": file_token}]}}
+    # 4. 回填记录
+    update_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{base_token}/tables/{table_id}/records/{record_id}"
+    update_data = {
+        "fields": {
+            field_id: [{"file_token": file_token}]
+        }
+    }
     
     update_resp = requests.patch(update_url, headers=headers, json=update_data)
     
     if update_resp.status_code != 200:
-        print(f"❌ 回填记录失败: {update_resp.text}")
+        print(f"❌ 回填失败: {update_resp.text}")
         update_resp.raise_for_status()
         
-    print(f"🎉 任务圆满完成！")
+    print(f"🎉 恭喜！图片已成功出现在表格中。")
     return update_resp.json()
 def upload_attachment_to_base_record(
     record_id: str, field_id: str, file_token: str, app_token: str
