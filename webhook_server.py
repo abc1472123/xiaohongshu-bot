@@ -176,10 +176,12 @@ def webhook():
         if not keyword:
             return jsonify({"code": 1, "msg": "未找到关键词字段"}), 400
 
+        content = find_field("仿写笔记内容") or find_field("content") or ""
+        prompt = (content + "\n关键词:" + keyword).strip() if content else keyword
         print(f"[生图] 关键词={keyword}，record_id={record_id}")
 
         print("[Step 1] 调用 HotAI 生图...")
-        image_bytes = generate_image_via_hotai(keyword)
+        image_bytes = generate_image_via_hotai(prompt)
         print(f"[Step 1] 生图完成，图片大小={len(image_bytes)} bytes")
 
         tmp_path = tempfile.mktemp(suffix=".png")
